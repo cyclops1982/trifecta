@@ -16,13 +16,12 @@
                  user: '', 
                  loggedon: false, 
                  images: [],
-                 myimages: [],
+                 imageslist: [],
                  postId: '',
                  postTitle: '',
                  postPublic: 0,
                  postPublicUntil: 0,
                  can_touch_post: 0,
-
                  get canDelImage() { return( this.loggedon && this.postid != '');},
                  get canShowImage() { return( this.images.length > 0);},
                  get showPasteImage() { return ( this.loggedon);} 
@@ -117,13 +116,12 @@
                 <th>Paste ID</th>
                 <th>Type</th>
                 <th>Size</th>
-                
                 <th>Until</th>
                 <th>Thumbnail</th>
                 <th>Public</th>
                 <th>Del</th>
               </tr>
-              <template x-for="g in myimages">
+              <template x-for="g in imageslist">
                 <tr>
                   <td><a x-bind:href="'?p='+g.postId" x-text="g.postId"></a></td>
                   <td x-text="new Date(g.tstamp * 1000).toLocaleString()"></td>

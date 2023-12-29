@@ -16,7 +16,7 @@
                  message2user: '',
                  sessions: [],
                  loggedon: false,
-                 images: []
+                 imageslist: []
 }" x-init="getLoginStatus($data);getUserList($data);getImageList($data); getSessionList($data);"
     @paste.window="getImage($data, $event)">
     <header>
@@ -152,7 +152,7 @@
             <th>Public</th>
             <th>Thumbnail</th>
           </tr>
-          <template x-for="g in images">
+          <template x-for="g in imageslist">
             <tr>
               <td x-text="g.id"></td>
               <td><a x-bind:href="'./?p='+g.postId" x-text="g.postId"></a></td>

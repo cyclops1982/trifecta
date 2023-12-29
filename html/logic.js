@@ -43,14 +43,15 @@ function doLogout(f)
 {
     fetch("logout", {method: "POST"})
         .then(function(res){ getLoginStatus(f);
-                             f.myimages=[];
+                             f.images=[];
+                             f.imageslist=[]
                            });
 }
 
 function getImageList(f)
 {
     fetch('all-images').then(response => response.json()).then(data => {
-        f.images = data;
+        f.imageslist = data;
     });
 }
 function getUserList(f)
@@ -71,7 +72,7 @@ function getSessionList(f)
 function getMyImageList(f)
 {
     fetch('my-images').then(response => response.json()).then(data => {
-        f.myimages = data;
+        f.imageslist = data;
     });
 }
 
