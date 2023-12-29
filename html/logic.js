@@ -3,15 +3,14 @@
 function getLoginStatus(f)
 {
     const result = fetch('status').then(response => response.json()).then(data => {
+        f.login = "";
+        f.loggedon = false;
+        f.userisadmin = false;
         if(data.login) {
             f.user = data.user;
             f.login = "Logged in as user "+data.user;
             f.loggedon = true;
-        }
-        else {
-            f.login = "";
-            
-            f.loggedon = false;
+            f.userisadmin = data.admin;
         }
     });
 
