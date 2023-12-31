@@ -1,143 +1,152 @@
 "use strict";
 
-function getLoginStatus(f)
-{
+document.addEventListener('alpine:init', () => {
+    Alpine.store('user', {
+        username: "",
+        loggedon: false,
+        login: "",
+        userisadmin: false
+    });
+    Alpine.store('images', {});
+    Alpine.store('imageslist', {});
+})
+
+function getLoginStatus(f) {
+    console.log("getLoginStatus");
     const result = fetch('status').then(response => response.json()).then(data => {
         f.login = "";
         f.loggedon = false;
         f.userisadmin = false;
-        if(data.login) {
-            f.user = data.user;
-            f.login = "Logged in as user "+data.user;
-            f.loggedon = true;
-            f.userisadmin = data.admin;
+ 
+        if (data.login) {
+            Alpine.store('user', {
+                username: data.user,
+                login: "Logged in as user " + data.user,
+                loggedon: true,
+                userisadmin: data.admin,
+            });
         }
     });
 
-    result.then( r => {
+    result.then(r => {
         let a = new URL(window.location.href)
-        f.can_touch_post=0;
+        f.can_touch_post = 0;
         let p = a.searchParams.get("p");
-        if(p != null) {
+        if (p != null) {
             f.postId = p;
-            fetch('getPost/'+f.postId).then(response => response.json()).then(data => {
+            fetch('getPost/' + f.postId).then(response => response.json()).then(data => {
                 f.images = data.images;
                 f.postTitle = data.title;
                 f.postPublic = data["public"];
                 f.postPublicUntil = data["publicUntil"];
             });
-            fetch('can_touch_post/'+f.postId).then(response => {
+            fetch('can_touch_post/' + f.postId).then(response => {
                 if (response.ok) {
                     response.json().then(data => {
-                         f.can_touch_post = data.can_touch_post;
+                        f.can_touch_post = data.can_touch_post;
                     });
                 }
             });
         }
     });
-    
+    console.log('End of getloginstatus');
 }
 
-function doLogout(f)
-{
-    fetch("logout", {method: "POST"})
-        .then(function(res){ getLoginStatus(f);
-                             f.images=[];
-                             f.imageslist=[]
-                           });
+function LoadPage(f) {
+    console.log("LoadPage");
+    console.log(f);
 }
 
-function getImageList(f)
-{
+function doLogout(f) {
+    fetch("logout", { method: "POST" })
+        .then(function (res) {
+            getLoginStatus(f);
+            //f.images = [];
+            //f.imageslist = []
+        });
+}
+
+function getImageList(f) {
     fetch('all-images').then(response => response.json()).then(data => {
-        f.imageslist = data;
+        Alpine.store('imageslist', data)
     });
 }
-function getUserList(f)
-{
+function getUserList(f) {
     fetch('all-users').then(response => response.json()).then(data => {
         f.users = data;
     });
 }
 
-function getSessionList(f)
-{
+function getSessionList(f) {
     fetch('all-sessions').then(response => response.json()).then(data => {
         f.sessions = data;
     });
 }
 
 
-function getMyImageList(f)
-{
+function getMyImageList(f) {
     fetch('my-images').then(response => response.json()).then(data => {
-        f.imageslist = data;
+        Alpine.store('imageslist', data)
     });
 }
 
-function doSetPostTitle(f, el)
-{
+function doSetPostTitle(f, el) {
     const formData = new FormData();
     formData.append('title', el.value);
-    
-    fetch("set-post-title/"+f.postId, {method: "POST", body: formData});
+
+    fetch("set-post-title/" + f.postId, { method: "POST", body: formData });
 }
 
-function doLogin(el, f)
-{
+function doLogin(el, f) {
     const data = new FormData(el);
-    fetch("login", {method: "POST", body: data})
-    .then(response => response.json()).then(data => {
-        if(data.ok) {
-            f.message2user="";
-            getLoginStatus(f);
-            getMyImageList(f);
-        }
-        else
-            f.message2user = data.message; 
-    });
-}
-
-function doDeleteImage(f, imageid)
-{
-    if (window.confirm("Do you really want to delete this image?")) {
-        fetch("delete-image/" + imageid, {method: "POST"})
-        .then(function(res){
-            if(res.ok) {
-                f.images = f.images.filter(function(item) {
-                    return item.id !== imageid;
-                })
+    fetch("login", { method: "POST", body: data })
+        .then(response => response.json()).then(data => {
+            if (data.ok) {
+                f.message2user = "";
+                getLoginStatus(f);
+                getMyImageList(f);
             }
+            else
+                f.message2user = data.message;
         });
-    }
 }
 
-function doDeletePost(f, postid)
-{
-    if (window.confirm("Do you really want to delete this post?")) {
-        fetch("delete-post/" + postid, {method: "POST"})
-            .then(function(res){
-                if(res.ok) {
-                    window.location.href="./";
+function doDeleteImage(f, imageid) {
+    if (window.confirm("Do you really want to delete this image?")) {
+        fetch("delete-image/" + imageid, { method: "POST" })
+            .then(function (res) {
+                if (res.ok) {
+                    f.images = f.images.filter(function (item) {
+                        return item.id !== imageid;
+                    })
                 }
             });
     }
 }
 
-function doKillSession(f, sessionid)
-{
-    fetch("kill-session/"+sessionid, {method: "POST"}).then(function(res){
-        if(res.ok) {
+function doDeletePost(f, postid) {
+    if (window.confirm("Do you really want to delete this post?")) {
+        fetch("delete-post/" + postid, { method: "POST" })
+            .then(function (res) {
+                if (res.ok) {
+                    window.location.href = "./";
+                }
+            });
+    }
+}
+
+function doKillSession(f, sessionid) {
+    fetch("kill-session/" + sessionid, { method: "POST" }).then(function (res) {
+        if (res.ok) {
             getSessionList(f);
         }
     });
 }
 
-function doDelUser(f, user)
-{
+function doDelUser(f, user) {
     if (window.confirm("Do you really want to delete this user?")) {
-        fetch("del-user/"+user, {method: "POST"}).then(function(res){
-            if(res.ok) {
+        fetch("del-user/" + user, { method: "POST" }).then(function (res) {
+            if (res.ok) {
                 getUserList(f);
             }
         });
@@ -145,15 +154,14 @@ function doDelUser(f, user)
 }
 
 
-function doChangePublic(f, postid, el)
-{
+function doChangePublic(f, postid, el) {
     let val = el.checked ? "1" : "0";
     el.disabled = true; // disable while transaction is running
-    
-    fetch("set-post-public/"+postid+"/"+val, {method: "POST"}).then(function(res){
+
+    fetch("set-post-public/" + postid + "/" + val, { method: "POST" }).then(function (res) {
         el.disabled = false;
-        
-        if(res.ok) {
+
+        if (res.ok) {
             el.checked = !el.checked;
             f.postPublic = el.checked ? 1 : 0; // we need to propagate this manually
             // because we prevented normal event processing
@@ -162,47 +170,43 @@ function doChangePublic(f, postid, el)
     });
 }
 
-function doChangePublicUntil(f, postid, el, seconds)
-{
+function doChangePublicUntil(f, postid, el, seconds) {
     let limit = (Date.now() / 1000 + seconds).toFixed();
-    if(seconds==0)
+    if (seconds == 0)
         limit = 0;
-    fetch("set-post-public/"+postid+"/"+f.postPublic+"/"+limit, {method: "POST"}).then(function(res){
-        if(res.ok) {
+    fetch("set-post-public/" + postid + "/" + f.postPublic + "/" + limit, { method: "POST" }).then(function (res) {
+        if (res.ok) {
             f.postPublicUntil = limit; // we need to propagate this manually
             getMyImageList(f);
         }
     });
 }
 
-function doChangeUserDisabled(f, user, el)
-{
+function doChangeUserDisabled(f, user, el) {
     let val = el.checked ? "1" : "0";
     el.disabled = true; // disable while transaction is running
 
-    fetch("change-user-disabled/"+user+"/"+val, {method: "POST"}).then(function(res){
+    fetch("change-user-disabled/" + user + "/" + val, { method: "POST" }).then(function (res) {
         el.disabled = false;
 
-        if(res.ok)
-            el.checked = !el.checked; 
+        if (res.ok)
+            el.checked = !el.checked;
     });
 }
 
 
-function processCaptionKey(f, el, e, imageid)
-{
+function processCaptionKey(f, el, e, imageid) {
     const formData = new FormData();
     formData.append('caption', el.value);
-    
-    fetch("set-image-caption/"+ imageid, {method: "POST", body: formData});
+
+    fetch("set-image-caption/" + imageid, { method: "POST", body: formData });
 }
 
-async function uploadFile(clipboardItem, f)
-{
+async function uploadFile(clipboardItem, f) {
     if (clipboardItem.type.startsWith('image/')) {
         const formData = new FormData();
-        if(f.postId != '') {
-            console.log("Passing known postId: "+f.postId);
+        if (f.postId != '') {
+            console.log("Passing known postId: " + f.postId);
             formData.append('postId', f.postId);
         }
         formData.append('file', clipboardItem, clipboardItem.name);
@@ -215,15 +219,15 @@ async function uploadFile(clipboardItem, f)
                 if (response.ok) {
                     // this "return" is what makes the chaining work
                     return response.json().then(data => {
-                        f.images.push({"id": data.id});
+                        f.images.push({ "id": data.id });
                         f.postId = data.postId;
                         f.postPublic = data["public"];
                         f.postPublicUntil = data["publicUntil"];
-                        
-                        console.log("Set postId to "+f.postId);
-                        f.can_touch_post=1;
+
+                        console.log("Set postId to " + f.postId);
+                        f.can_touch_post = 1;
                         const url = new URL(window.location.href);
-                        url.searchParams.set("p", data.postId); 
+                        url.searchParams.set("p", data.postId);
                         history.pushState({}, "", url);
                         getMyImageList(f);
                     });
@@ -236,70 +240,66 @@ async function uploadFile(clipboardItem, f)
             });
     }
     else
-        console.log("Don't know how to deal with paste of "+clipboardItem.type);
-        
+        console.log("Don't know how to deal with paste of " + clipboardItem.type);
+
 }
-    
+
 // this uploads an image, possibly to an existing post. If there is no post yet, it receives
 // the post that was created for us
-async function getImageFromPaste(f, e)
-{
+async function getImageFromPaste(f, e) {
     e.preventDefault();
-    if(!f.loggedon) {
-        f.message2user="Please login to paste an image.";
+    if (!f.loggedon) {
+        f.message2user = "Please login to paste an image.";
         return;
     }
 
-    let files=e.clipboardData.files;
-    if(files.length > 0) {
+    let files = e.clipboardData.files;
+    if (files.length > 0) {
         await uploadFile(files[0], f);
-        for (let n=1; n < files.length; ++n) {
-            console.log("Start upload "+n);
+        for (let n = 1; n < files.length; ++n) {
+            console.log("Start upload " + n);
             uploadFile(files[n], f);
         }
     }
 }
 
-async function processDrop(f, e)
-{
-    if(!f.loggedon) {
-        f.message2user="Please login to paste an image.";
+async function processDrop(f, e) {
+    if (!f.loggedon) {
+        f.message2user = "Please login to paste an image.";
         return;
     }
-    let files=e.dataTransfer.files;
+    let files = e.dataTransfer.files;
 
-    if(files.length > 0) {
+    if (files.length > 0) {
         await uploadFile(files[0], f);
-        for (let n=1; n < files.length; ++n) {
+        for (let n = 1; n < files.length; ++n) {
             uploadFile(files[n], f);
         }
     }
 }
 
-function doCreateUser(el, f)
-{
-    let user =el[0].value;
+function doCreateUser(el, f) {
+    let user = el[0].value;
     let pass1 = el[1].value;
     let pass2 = el[2].value;
     f.message2user = "";
-    if(pass1 != pass2) {
-        f.message2user="<span class='error'>Passwords do not match</span>";
+    if (pass1 != pass2) {
+        f.message2user = "<span class='error'>Passwords do not match</span>";
         return;
     }
-    
-    fetch("create-user", {method: "POST", body: new FormData(el)}).then(response =>
-        {
-            if(response.ok) {
-                response.json().then(data => {
-                    if(data.ok) {
-                        f.message2user="User created";
-                        getUserList(f);
-                    }
-                    else
-                        f.message2user=data.message;
-                });
-            }
-            else
-                f.message2user="Error sending creation request";
-        });
+
+    fetch("create-user", { method: "POST", body: new FormData(el) }).then(response => {
+        if (response.ok) {
+            response.json().then(data => {
+                if (data.ok) {
+                    f.message2user = "User created";
+                    getUserList(f);
+                }
+                else
+                    f.message2user = data.message;
+            });
+        }
+        else
+            f.message2user = "Error sending creation request";
+    });
 }

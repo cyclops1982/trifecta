@@ -13,11 +13,7 @@
 <body>
   <div id="container" x-data="{
                  message2user: '', 
-                 userisadmin: false,
-                 user: '', 
-                 loggedon: false, 
                  images: [],
-                 imageslist: [],
                  postId: '',
                  postTitle: '',
                  postPublic: 0,
@@ -26,19 +22,19 @@
                  get canDelImage() { return( this.loggedon && this.postid != '');},
                  get canShowImage() { return( this.images.length > 0);},
                  get showPasteImage() { return ( this.loggedon);} 
-}" x-init="getLoginStatus($data);getMyImageList($data);">
+}" x-init="getLoginStatus($data);getMyImageList($data);LoadPage($data);">
     <header>
       <h1><a href="./">Trifecta</a></h1>
 
-      <template x-if="loggedon">
+      <template x-if="$store.user.loggedon">
         <div>
-          <span>Logged in as </span><span x-text="user"></span>
+          <span>Logged in as </span><span x-text="$store.user.username"></span>
           <button @click="doLogout($data)">Logout</button>
         </div>
       </template>
 
 
-      <template x-if="!loggedon">
+      <template x-if="!$store.user.loggedon">
         <div>
           <form x-cloak @submit.prevent="doLogin($el, $data)">
             <label for="user">Username:</label>
@@ -99,7 +95,7 @@
         </template>
       </div>
 
-      <template x-if="showPasteImage"> 
+      <template x-if="$store.user.loggedon"> 
         <div id="paste" @paste="getImageFromPaste($data, $event)"
              @drop.prevent="processDrop($data, $event)" @dragover.prevent="">
           <h2>Paste your image here</h2>
@@ -107,7 +103,7 @@
         </div>
       </template>
        
-      <template x-if="loggedon"> 
+      <template x-if="$store.user.loggedon"> 
         <div id="imagelist">
           <h2>Your images</h2>
           <div>
@@ -123,7 +119,7 @@
                 <th>Public</th>
                 <th>Del</th>
               </tr>
-              <template x-for="g in imageslist">
+              <template x-for="g in $store.imageslist">
                 <tr>
                   <td><a x-bind:href="'?p='+g.postId" x-text="g.postId"></a></td>
                   <td x-text="new Date(g.tstamp * 1000).toLocaleString()"></td>
