@@ -12,13 +12,26 @@ document.addEventListener('alpine:init', () => {
     Alpine.store('user', G_NoUser); // The user currently using the site
     Alpine.store('users', {}); // admin 
     Alpine.store('sessions', {}); // admin
-    Alpine.store('imageslist', {}); // used to show your or all images
+    Alpine.store('imageslist', {}); // List of images (both admin and your own)
     Alpine.store('post', {
         id: undefined,
         canTouch: false,
     }); // current post
-    console.log("Alpine init DONE");
 })
+
+
+
+function ShowMessage(msg, error) {
+    // we might as well move to setting the innerHTML here, but we'll leave this for now
+    Alpine.store("message2user", msg);
+    const span = document.querySelector("#userfeedback > span");
+    span.classList.remove("error")
+
+    if (error !== undefined) {
+        span.classList.add("error")
+        console.error(error);
+    }
+}
 
 
 async function getLoginStatus() {
@@ -35,19 +48,22 @@ async function getLoginStatus() {
     }
 }
 
-async function LoadPost() {
-    let a = new URL(window.location.href)
-    let p = a.searchParams.get("p");
-    if (p != null) {
-        const data = await (await fetch(`getPost/${p}`)).json();
-        const touchData = await (await fetch(`can_touch_post/${p}`)).json();
+async function LoadPost(postid = undefined) {
+    console.log(`LoadPost(${postid})`);
+    if (postid === undefined) {
+        let url = new URL(window.location.href)
+        postid = url.searchParams.get("p");
+    }
+    if (postid !== undefined && postid != null) {
+        const data = await (await fetch(`getPost/${postid}`)).json();
+        const touchData = await (await fetch(`can_touch_post/${postid}`)).json();
         let canTouch = false;
         if (touchData) {
             canTouch = touchData.can_touch_post;
         }
         if (data && touchData) {
             Alpine.store('post', {
-                id: p,
+                id: postid,
                 images: data.images,
                 title: data.title,
                 public: data["public"],
@@ -55,12 +71,14 @@ async function LoadPost() {
                 canTouch: canTouch
             })
         }
+    } else {
+        console.log("No loading post, as there's no postid.");
     }
 }
 
 async function LoadPage() {
     await getLoginStatus();
-    setTimeout(LoadPost, 2000);
+    LoadPost();
     if (Alpine.store('user').isadmin) {
         getUserList();
         getSessionList();
@@ -68,7 +86,7 @@ async function LoadPage() {
     getImageList();
 }
 
-function doLogout(f) {
+function doLogout() {
     fetch("logout", { method: "POST" })
         .then(function (res) {
             Alpine.store('user', G_NoUser);
@@ -99,11 +117,11 @@ function getMyImageList(f) {
     });
 }
 
-function doSetPostTitle(f, el) {
+function doSetPostTitle(postid, el) {
     const formData = new FormData();
     formData.append('title', el.value);
 
-    fetch(`set-post-title${f.postId}`, { method: "POST", body: formData });
+    fetch(`set-post-title/${postid}`, { method: "POST", body: formData });
 }
 
 function doLogin(el) {
@@ -114,25 +132,27 @@ function doLogin(el) {
                 LoadPage();
             }
             else {
-                Alpine.store("message2user", data.message);
+                ShowMessage(data.message, data);
             }
         });
 }
 
-function doDeleteImage(f, imageid) {
+function doDeleteImage(imageid) {
     if (window.confirm("Do you really want to delete this image?")) {
         fetch(`delete-image/${imageid}`, { method: "POST" })
             .then(function (res) {
                 if (res.ok) {
-                    f.images = f.images.filter(function (item) {
-                        return item.id !== imageid;
-                    })
+                    getMyImageList();
+                    LoadPost();
+                    // f.images = f.images.filter(function (item) {
+                    //     return item.id !== imageid;
+                    // })
                 }
             });
     }
 }
 
-function doDeletePost(f, postid) {
+function doDeletePost(postid) {
     if (window.confirm("Do you really want to delete this post?")) {
         fetch(`delete-post/${postid}`, { method: "POST" })
             .then(function (res) {
@@ -151,41 +171,39 @@ function doKillSession(sessionid) {
     });
 }
 
-function doDelUser(f, user) {
+function doDelUser(user) {
     if (window.confirm("Do you really want to delete this user?")) {
-        fetch("del-user/" + user, { method: "POST" }).then(function (res) {
+        fetch(`del-user/${user}`, { method: "POST" }).then(function (res) {
             if (res.ok) {
-                getUserList(f);
+                getUserList();
             }
         });
     }
 }
 
 
-function doChangePublic(f, postid, el) {
+function doChangePublic(postid, el) {
     let val = el.checked ? "1" : "0";
     el.disabled = true; // disable while transaction is running
 
-    fetch("set-post-public/" + postid + "/" + val, { method: "POST" }).then(function (res) {
+    fetch(`set-post-public/${postid}/${val}`, { method: "POST" }).then(function (res) {
         el.disabled = false;
 
         if (res.ok) {
             el.checked = !el.checked;
-            f.postPublic = el.checked ? 1 : 0; // we need to propagate this manually
-            // because we prevented normal event processing
-            getMyImageList(f);
+            LoadPost();
         }
     });
 }
 
-function doChangePublicUntil(f, postid, el, seconds) {
+function doChangePublicUntil(postid, postpublic, seconds) {
     let limit = (Date.now() / 1000 + seconds).toFixed();
-    if (seconds == 0)
+    if (seconds == 0) {
         limit = 0;
-    fetch("set-post-public/" + postid + "/" + f.postPublic + "/" + limit, { method: "POST" }).then(function (res) {
+    }
+    fetch(`set-post-public/${postid}/${postpublic}/${limit}`, { method: "POST" }).then(function (res) {
         if (res.ok) {
-            f.postPublicUntil = limit; // we need to propagate this manually
-            getMyImageList(f);
+            LoadPost();
         }
     });
 }
@@ -194,95 +212,95 @@ function doChangeUserDisabled(f, user, el) {
     let val = el.checked ? "1" : "0";
     el.disabled = true; // disable while transaction is running
 
-    fetch("change-user-disabled/" + user + "/" + val, { method: "POST" }).then(function (res) {
+    fetch(`change-user-disabled/${user}/${val}`, { method: "POST" }).then(function (res) {
         el.disabled = false;
 
-        if (res.ok)
-            el.checked = !el.checked;
+        if (res.ok) {
+            getUserList();
+        } else {
+            ShowMessage("Failed to enable/disable user", res);
+        }
     });
 }
 
 
-function processCaptionKey(f, el, e, imageid) {
+function processCaptionKey(value, imageid) {
     const formData = new FormData();
-    formData.append('caption', el.value);
+    formData.append('caption', value);
 
-    fetch("set-image-caption/" + imageid, { method: "POST", body: formData });
+    fetch(`set-image-caption/${imageid}`, { method: "POST", body: formData });
+    //TODO: error handling
 }
 
-async function uploadFile(clipboardItem, f) {
+async function uploadFile(clipboardItem, postid = undefined) {
     if (clipboardItem.type.startsWith('image/')) {
         const formData = new FormData();
-        if (f.postId != '') {
-            console.log("Passing known postId: " + f.postId);
-            formData.append('postId', f.postId);
+        if (postid !== undefined) {
+            console.log(`Passing known postId: ${postid}`);
+            formData.append('postId', postid);
         }
-        formData.append('file', clipboardItem, clipboardItem.name);
 
-        await fetch("upload", {
+        formData.append('file', clipboardItem, clipboardItem.name);
+        const response = await fetch("upload", {
             method: 'POST',
             body: formData
-        })
-            .then(response => {
-                if (response.ok) {
-                    // this "return" is what makes the chaining work
-                    return response.json().then(data => {
-                        f.images.push({ "id": data.id });
-                        f.postId = data.postId;
-                        f.postPublic = data["public"];
-                        f.postPublicUntil = data["publicUntil"];
+        });
 
-                        console.log("Set postId to " + f.postId);
-                        f.can_touch_post = 1;
-                        const url = new URL(window.location.href);
-                        url.searchParams.set("p", data.postId);
-                        history.pushState({}, "", url);
-                        getMyImageList(f);
-                    });
-                } else {
-                    console.error('Error uploading file:', response.statusText);
-                }
-            })
-            .catch(error => {
-                console.error('Network error during file upload', error);
-            });
+        console.log(formData);
+        if (response.ok) {
+            const data = await response.json();
+            const url = new URL(window.location.href);
+            url.searchParams.set("p", data.postId);
+            history.pushState({}, "", url);
+            return data.postId;
+        } else {
+            console.error('Error uploading file:', response.statusText);
+        }
     }
-    else
+    else {
         console.log("Don't know how to deal with paste of " + clipboardItem.type);
-
+    }
 }
 
 // this uploads an image, possibly to an existing post. If there is no post yet, it receives
 // the post that was created for us
-async function getImageFromPaste(f, e) {
+async function getImageFromPaste(e) {
     e.preventDefault();
     if (!Alpine.store('user').loggedon) {
-        f.message2user = "Please login to paste an image.";
+
+        ShowMessage("Please login to paste an image.");
         return;
     }
+
+    let postid = Alpine.store('post').id;
 
     let files = e.clipboardData.files;
     if (files.length > 0) {
-        await uploadFile(files[0], f);
+        postid = await uploadFile(files[0], postid);
         for (let n = 1; n < files.length; ++n) {
-            console.log("Start upload " + n);
-            uploadFile(files[n], f);
+            uploadFile(files[n], postid);
         }
+        LoadPost(postid);
+    } else {
+        console.log("Clipboard data is not a file");
     }
 }
 
-async function processDrop(f, e) {
-    if (!f.loggedon) {
-        f.message2user = "Please login to paste an image.";
+async function processDrop(e) {
+    if (!Alpine.store('user').loggedon) {
+        ShowMessage("Please login to paste an image.");
         return;
     }
-    let files = e.dataTransfer.files;
 
+    let postid = Alpine.store('post').id;
+
+    let files = e.dataTransfer.files;
     if (files.length > 0) {
-        await uploadFile(files[0], f);
+        postid = await uploadFile(files[0], postid);
         for (let n = 1; n < files.length; ++n) {
-            uploadFile(files[n], f);
+            uploadFile(files[n], postid);
         }
+        LoadPost(postid);
     }
 }
 

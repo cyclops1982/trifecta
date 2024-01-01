@@ -61,6 +61,13 @@ footer
 body {
     font-family: Open Sans, Roboto, sans-serif;
     color: var(--clr-primary-fg);
+    height: 100dvh;
+    display: grid;
+    grid-template-rows:auto 1fr auto;
+    grid-template-areas: 
+    "header"
+    "content"
+    "footer";
 }
 
 a {
@@ -75,16 +82,6 @@ h1>a {
 .postTitle {
     font-size: var(--size-l);
     margin: 1em;
-}
-
-div#container {
-    height: 100dvh;
-    display: grid;
-    grid-template-rows:auto 1fr auto;
-    grid-template-areas: 
-    "header"
-    "content"
-    "footer";
 }
 
 
