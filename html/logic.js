@@ -1,17 +1,22 @@
 "use strict";
 
+
+const G_NoUser = {
+    username: "",
+    loggedon: false,
+    login: "",
+    isadmin: false
+}
+
 document.addEventListener('alpine:init', () => {
-    Alpine.store('user', {
-        username: "",
-        loggedon: false,
-        login: "",
-        userisadmin: false
-    });
-    Alpine.store('images', {});
-    Alpine.store('imageslist', {});
+    Alpine.store('user', G_NoUser); // The user currently using the site
+    Alpine.store('users', {}); // admin 
+    Alpine.store('sessions', {}); // admin
+    Alpine.store('imageslist', {}); // used to show your or all images
     Alpine.store('post', {
+        id: undefined,
         canTouch: false,
-    });
+    }); // current post
     console.log("Alpine init DONE");
 })
 
@@ -25,7 +30,7 @@ async function getLoginStatus() {
             username: result.user,
             login: "Logged in as user " + result.user,
             loggedon: true,
-            userisadmin: result.admin,
+            isadmin: result.admin,
         });
     }
 }
@@ -35,7 +40,7 @@ async function LoadPost() {
     let p = a.searchParams.get("p");
     if (p != null) {
         const data = await (await fetch(`getPost/${p}`)).json();
-        const touchData = await(await fetch(`can_touch_post/${p}`)).json();
+        const touchData = await (await fetch(`can_touch_post/${p}`)).json();
         let canTouch = false;
         if (touchData) {
             canTouch = touchData.can_touch_post;
@@ -55,18 +60,18 @@ async function LoadPost() {
 
 async function LoadPage() {
     await getLoginStatus();
-    setTimeout(LoadPost, 5000);
-    if (Alpine.store('user').userisadmin) {
-        console.log("User is admin...");
+    setTimeout(LoadPost, 2000);
+    if (Alpine.store('user').isadmin) {
+        getUserList();
+        getSessionList();
     }
+    getImageList();
 }
 
 function doLogout(f) {
     fetch("logout", { method: "POST" })
         .then(function (res) {
-            getLoginStatus(f);
-            //f.images = [];
-            //f.imageslist = []
+            Alpine.store('user', G_NoUser);
         });
 }
 
@@ -75,15 +80,15 @@ function getImageList(f) {
         Alpine.store('imageslist', data)
     });
 }
-function getUserList(f) {
+function getUserList() {
     fetch('all-users').then(response => response.json()).then(data => {
-        f.users = data;
+        Alpine.store('users', data)
     });
 }
 
-function getSessionList(f) {
+function getSessionList() {
     fetch('all-sessions').then(response => response.json()).then(data => {
-        f.sessions = data;
+        Alpine.store('sessions', data)
     });
 }
 
@@ -98,26 +103,25 @@ function doSetPostTitle(f, el) {
     const formData = new FormData();
     formData.append('title', el.value);
 
-    fetch("set-post-title/" + f.postId, { method: "POST", body: formData });
+    fetch(`set-post-title${f.postId}`, { method: "POST", body: formData });
 }
 
-function doLogin(el, f) {
+function doLogin(el) {
     const data = new FormData(el);
     fetch("login", { method: "POST", body: data })
         .then(response => response.json()).then(data => {
             if (data.ok) {
-                f.message2user = "";
-                getLoginStatus(f);
-                getMyImageList(f);
+                LoadPage();
             }
-            else
-                f.message2user = data.message;
+            else {
+                Alpine.store("message2user", data.message);
+            }
         });
 }
 
 function doDeleteImage(f, imageid) {
     if (window.confirm("Do you really want to delete this image?")) {
-        fetch("delete-image/" + imageid, { method: "POST" })
+        fetch(`delete-image/${imageid}`, { method: "POST" })
             .then(function (res) {
                 if (res.ok) {
                     f.images = f.images.filter(function (item) {
@@ -130,7 +134,7 @@ function doDeleteImage(f, imageid) {
 
 function doDeletePost(f, postid) {
     if (window.confirm("Do you really want to delete this post?")) {
-        fetch("delete-post/" + postid, { method: "POST" })
+        fetch(`delete-post/${postid}`, { method: "POST" })
             .then(function (res) {
                 if (res.ok) {
                     window.location.href = "./";
@@ -139,10 +143,10 @@ function doDeletePost(f, postid) {
     }
 }
 
-function doKillSession(f, sessionid) {
-    fetch("kill-session/" + sessionid, { method: "POST" }).then(function (res) {
+function doKillSession(sessionid) {
+    fetch(`kill-session/${sessionid}`, { method: "POST" }).then(function (res) {
         if (res.ok) {
-            getSessionList(f);
+            getSessionList();
         }
     });
 }
@@ -282,13 +286,12 @@ async function processDrop(f, e) {
     }
 }
 
-function doCreateUser(el, f) {
+function doCreateUser(el) {
     let user = el[0].value;
     let pass1 = el[1].value;
     let pass2 = el[2].value;
-    f.message2user = "";
     if (pass1 != pass2) {
-        f.message2user = "<span class='error'>Passwords do not match</span>";
+        Alpine.store('createusermessage', "Passwords do not match");
         return;
     }
 
@@ -296,14 +299,19 @@ function doCreateUser(el, f) {
         if (response.ok) {
             response.json().then(data => {
                 if (data.ok) {
-                    f.message2user = "User created";
-                    getUserList(f);
+                    Alpine.store('createusermessage', "User created");
+                    getUserList();
                 }
-                else
-                    f.message2user = data.message;
+                else {
+                    Alpine.store('createusermessage', data.message);
+                }
             });
         }
-        else
-            f.message2user = "Error sending creation request";
+        else {
+            Alpine.store('createusermessage', "Unexpected error in create-user");
+            console.error(response);
+
+        }
+
     });
 }
