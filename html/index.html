@@ -47,21 +47,27 @@
     <div id="posts">
       <template x-if="$store.post.canTouch">
         <div>
-          <input class="postTitle" x-model="$store.post.title" placeholder="Give your post a title" @keyup="doSetPostTitle($store.post.id, $el)">
+          <input class="postTitle" x-model="$store.post.title" placeholder="Give your post a title"
+            @keyup="doSetPostTitle($store.post.id, $el)">
           <br />
           <button @click="doDeletePost($store.post.id)">Delete post</button>
           <label for="publicCB">Public:</label>
           <input name="publicCB" @click.prevent="doChangePublic($store.post.id, $el)" type="checkbox"
             x-bind:checked="$store.post.public" x-model="$store.post.public" />
-          <button @click="doChangePublicUntil($store.post.id, $store.post.public, 300)" x-show="$store.post.public">5 minutes</button>
-          <button @click="doChangePublicUntil($store.post.id, $store.post.public, 3600)" x-show="$store.post.public">1 hour</button>
-          <button @click="doChangePublicUntil($store.post.id, $store.post.public, 86400)" x-show="$store.post.public">1 day</button>
-          <button @click="doChangePublicUntil($store.post.id, $store.post.public, 30*86400)" x-show="$store.post.public">1
+          <button @click="doChangePublicUntil($store.post.id, $store.post.public, 300)" x-show="$store.post.public">5
+            minutes</button>
+          <button @click="doChangePublicUntil($store.post.id, $store.post.public, 3600)" x-show="$store.post.public">1
+            hour</button>
+          <button @click="doChangePublicUntil($store.post.id, $store.post.public, 86400)" x-show="$store.post.public">1
+            day</button>
+          <button @click="doChangePublicUntil($store.post.id, $store.post.public, 30*86400)"
+            x-show="$store.post.public">1
             month</button>
-          <button @click="doChangePublicUntil($store.post.id, $store.post.public, 0)" x-show="$store.post.public">Forever</button>
-          <!--    <span x-text="if(postPublicUntil > 0 && postPublic && postPublicUntil*1000 >= Date.now()) return 'Until '+new Date(postPublicUntil * 1000).toLocaleString()+ ' your time'; else return '';"></span>
-            <span style="color: red;" x-text="if(postPublicUntil > 0 && postPublicUntil*1000 < Date.now()) return 'PUBLIC TIME LIMIT EXPIRED';"></span>
-            -->
+          <button @click="doChangePublicUntil($store.post.id, $store.post.public, 0)"
+            x-show="$store.post.public">Forever</button>
+          <span
+            x-text="if($store.post.publicUntil > 0 && $store.post.public && $store.post.publicUntil *1000 >= Date.now())  return 'Until '+new Date($store.post.publicUntil * 1000).toLocaleString()+ ' your time'; else return '';"></span>
+          <span class="error" x-text="if ($store.post.publicExpired) { return 'PUBLIC TIME LIMIT EXPIRED';}"></span>
         </div>
       </template>
       <template x-if="!$store.post.canTouch">
@@ -87,8 +93,7 @@
     </div>
 
     <template x-if="$store.user.loggedon">
-      <div id="paste" @paste="getImageFromPaste($event)" @drop.prevent="processDrop($event)"
-        @dragover.prevent="">
+      <div id="paste" @paste="getImageFromPaste($event)" @drop.prevent="processDrop($event)" @dragover.prevent="">
         <h2>Paste your image here</h2>
         <p>Simply paste your picture here.</p>
       </div>

@@ -62,12 +62,18 @@ async function LoadPost(postid = undefined) {
             canTouch = touchData.can_touch_post;
         }
         if (data && touchData) {
+            console.log(data);
+            let hasExpired = false;
+            if (data.publicUntil > 0) {
+                hasExpired = (data.publicUntil*1000) < Date.now();
+            }
             Alpine.store('post', {
                 id: postid,
                 images: data.images,
                 title: data.title,
-                public: data["public"],
-                publicUntil: data["publicUntil"],
+                public: data.public,
+                publicUntil: data.publicUntil,
+                publicExpired: hasExpired,
                 canTouch: canTouch
             })
         }
@@ -144,9 +150,6 @@ function doDeleteImage(imageid) {
                 if (res.ok) {
                     getMyImageList();
                     LoadPost();
-                    // f.images = f.images.filter(function (item) {
-                    //     return item.id !== imageid;
-                    // })
                 }
             });
     }
