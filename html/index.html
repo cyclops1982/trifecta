@@ -10,19 +10,8 @@
   <script defer src="alpine.min.js"></script>
 </head>
 
-<body>
-  <div id="container" x-data="{
-                 message2user: '', 
-                 images: [],
-                 postId: '',
-                 postTitle: '',
-                 postPublic: 0,
-                 postPublicUntil: 0,
-                 can_touch_post: 0,
-                 get canDelImage() { return( this.loggedon && this.postid != '');},
-                 get canShowImage() { return( this.images.length > 0);},
-                 get showPasteImage() { return ( this.loggedon);} 
-}" x-init="getLoginStatus($data);getMyImageList($data);LoadPage($data);">
+<body x-init="LoadPage();">
+  <div id="container">
     <header>
       <h1><a href="./">Trifecta</a></h1>
 
@@ -52,44 +41,45 @@
 
     <div id="content">
       <div id="userfeedback">
-        <span x-text="message2user"></span>
+        <span x-text="$store.message2user"></span>
       </div>
 
 
-      <div id="posts">
-        <template x-if="can_touch_post">
+      <div id="posts" x-init="console.log('Initializing posts..');">
+        <template x-if="$store.post.canTouch">
           <div>
-            <input class="postTitle" x-model="postTitle" placeholder="Give your post a title" @keyup="doSetPostTitle($data, $el)">
+            <input class="postTitle" x-model="$store.post.title" placeholder="Give your post a title" @keyup="doSetPostTitle($data, $el)">
             <br/>
             <button @click="doDeletePost($data, postId)">Delete post</button>
             <label for="publicCB">Public:</label>
             <input name="publicCB" @click.prevent="doChangePublic($data, postId, $el)" type="checkbox"
-                   x-bind:checked="postPublic" x-model="postPublic" />
-            <button @click="doChangePublicUntil($data, postId, $el, 300)" x-show="postPublic">5 minutes</button>
-            <button @click="doChangePublicUntil($data, postId, $el, 3600)" x-show="postPublic">1 hour</button>
-            <button @click="doChangePublicUntil($data, postId, $el, 86400)" x-show="postPublic">1 day</button>
-            <button @click="doChangePublicUntil($data, postId, $el, 30*86400)" x-show="postPublic">1 month</button>
-            <button @click="doChangePublicUntil($data, postId, $el, 0)" x-show="postPublic">Forever</button>
-            <span x-text="if(postPublicUntil > 0 && postPublic && postPublicUntil*1000 >= Date.now()) return 'Until '+new Date(postPublicUntil * 1000).toLocaleString()+ ' your time'; else return '';"></span>
+                   x-bind:checked="$store.post.public" x-model="$store.post.public" />
+            <button @click="doChangePublicUntil($data, postId, $el, 300)" x-show="$store.post.public">5 minutes</button>
+            <button @click="doChangePublicUntil($data, postId, $el, 3600)" x-show="$store.post.public">1 hour</button>
+            <button @click="doChangePublicUntil($data, postId, $el, 86400)" x-show="$store.post.public">1 day</button>
+            <button @click="doChangePublicUntil($data, postId, $el, 30*86400)" x-show="$store.post.public">1 month</button>
+            <button @click="doChangePublicUntil($data, postId, $el, 0)" x-show="$store.post.public">Forever</button>
+        <!--    <span x-text="if(postPublicUntil > 0 && postPublic && postPublicUntil*1000 >= Date.now()) return 'Until '+new Date(postPublicUntil * 1000).toLocaleString()+ ' your time'; else return '';"></span>
             <span style="color: red;" x-text="if(postPublicUntil > 0 && postPublicUntil*1000 < Date.now()) return 'PUBLIC TIME LIMIT EXPIRED';"></span>
+            -->
           </div>
         </template>
-        <template x-if="!can_touch_post">
-          <h2 class="postTitle" x-text="postTitle" ></h2>
+        <template x-if="!$store.post.canTouch">
+          <h2 class="postTitle" x-text="$store.post.title" ></h2>
         </template>
 
-        <template x-show="canShowImage" x-for="g in images">
+        <template x-show="$store.images" x-for="g in $store.post.images">
           <div>
             <a x-bind:href="'i/'+g.id" ><img x-cloak x-bind:alt="g.caption" x-bind:src="'i/'+g.id"></a>
             <div class="imagecontrols">
-              <template x-if="can_touch_post">
+              <template x-if="$store.post.canTouch">
                 <textarea class="imageCaption" x-model="g.caption" placeholder="Give your image a caption" rows="4" cols="70" @keyup="processCaptionKey($data, $el, $event, g.id)"></textarea>
               </template>
-              <template x-if="!can_touch_post">
+              <template x-if="!$store.post.canTouch">
                 <p class="imageCaption" x-text="g.caption"></p>
               </template>
 
-              <button @click="doDeleteImage($data, g.id)" x-show="can_touch_post">Delete image</button>
+              <button @click="doDeleteImage($data, g.id)" x-show="$store.post.canTouch">Delete image</button>
             </div>
           </div>
         </template>

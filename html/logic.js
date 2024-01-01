@@ -9,52 +9,56 @@ document.addEventListener('alpine:init', () => {
     });
     Alpine.store('images', {});
     Alpine.store('imageslist', {});
+    Alpine.store('post', {
+        canTouch: false,
+    });
+    console.log("Alpine init DONE");
 })
 
-function getLoginStatus(f) {
-    console.log("getLoginStatus");
-    const result = fetch('status').then(response => response.json()).then(data => {
-        f.login = "";
-        f.loggedon = false;
-        f.userisadmin = false;
- 
-        if (data.login) {
-            Alpine.store('user', {
-                username: data.user,
-                login: "Logged in as user " + data.user,
-                loggedon: true,
-                userisadmin: data.admin,
-            });
-        }
-    });
 
-    result.then(r => {
-        let a = new URL(window.location.href)
-        f.can_touch_post = 0;
-        let p = a.searchParams.get("p");
-        if (p != null) {
-            f.postId = p;
-            fetch('getPost/' + f.postId).then(response => response.json()).then(data => {
-                f.images = data.images;
-                f.postTitle = data.title;
-                f.postPublic = data["public"];
-                f.postPublicUntil = data["publicUntil"];
-            });
-            fetch('can_touch_post/' + f.postId).then(response => {
-                if (response.ok) {
-                    response.json().then(data => {
-                        f.can_touch_post = data.can_touch_post;
-                    });
-                }
-            });
-        }
-    });
-    console.log('End of getloginstatus');
+async function getLoginStatus() {
+    console.log("getLoginStatus");
+    const response = await fetch('status');
+    const result = await response.json();
+    if (result.login) {
+        Alpine.store('user', {
+            username: result.user,
+            login: "Logged in as user " + result.user,
+            loggedon: true,
+            userisadmin: result.admin,
+        });
+    }
 }
 
-function LoadPage(f) {
-    console.log("LoadPage");
-    console.log(f);
+async function LoadPost() {
+    let a = new URL(window.location.href)
+    let p = a.searchParams.get("p");
+    if (p != null) {
+        const data = await (await fetch(`getPost/${p}`)).json();
+        const touchData = await(await fetch(`can_touch_post/${p}`)).json();
+        let canTouch = false;
+        if (touchData) {
+            canTouch = touchData.can_touch_post;
+        }
+        if (data && touchData) {
+            Alpine.store('post', {
+                id: p,
+                images: data.images,
+                title: data.title,
+                public: data["public"],
+                publicUntil: data["publicUntil"],
+                canTouch: canTouch
+            })
+        }
+    }
+}
+
+async function LoadPage() {
+    await getLoginStatus();
+    setTimeout(LoadPost, 5000);
+    if (Alpine.store('user').userisadmin) {
+        console.log("User is admin...");
+    }
 }
 
 function doLogout(f) {
@@ -248,7 +252,7 @@ async function uploadFile(clipboardItem, f) {
 // the post that was created for us
 async function getImageFromPaste(f, e) {
     e.preventDefault();
-    if (! Alpine.store('user').loggedon) {
+    if (!Alpine.store('user').loggedon) {
         f.message2user = "Please login to paste an image.";
         return;
     }
